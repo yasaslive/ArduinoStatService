@@ -127,8 +127,9 @@ namespace TempService
                 Interval = interval
             };
             timer.Elapsed += new ElapsedEventHandler(this.OnTimedEvent);
-            timer.Start();
             timer.AutoReset = true;
+            timer.Start();
+            
         }
 
         protected override void OnStart(string[] args)
