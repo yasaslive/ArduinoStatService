@@ -106,4 +106,5 @@ This means the Windows Service is inactive. Start the ""Arduino Serial Service""
 
 This means the service had an issue and it's throwing errors! To view the errors go to ""Windows Event Viwer"" and under Application Logs you will see an error for Arduino Serial Service. Resolve the error and rebuild the solution.
 
+
 Made in Sri Lanka with ❤️
