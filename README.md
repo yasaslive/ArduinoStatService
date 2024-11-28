@@ -1,4 +1,4 @@
-﻿# TempService
+﻿# Arduino Stat Service
 
 ## Arduino Based System Stat Viewer
 
