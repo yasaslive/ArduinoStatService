@@ -96,7 +96,7 @@ ETA
 #### GPU Clock
 ETA
 
-### Troubleshooting
+### Troubleshooting:
 
 #### Display shows ""No Data!" message.
 
