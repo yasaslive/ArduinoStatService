@@ -69,41 +69,46 @@ namespace TempService
 
         public void OnTimedEvent(object sender, ElapsedEventArgs args)
         {
-            
-            Monitor();
-            string command = "";
-            foreach (KeyValuePair<string, int> item in resources)
+            try
             {
-                if (ENABLE_DEBUG) Console.WriteLine("{0}, {1}", item.Key, item.Value);
-                if (item.Key == "Load CPU Total")
+                Monitor();
+                string command = "";
+                foreach (KeyValuePair<string, int> item in resources)
                 {
-                    command = item.Value.ToString().PadLeft(3, '0');
+                    if (ENABLE_DEBUG) Console.WriteLine("{0}, {1}", item.Key, item.Value);
+                    if (item.Key == "Load CPU Total")
+                    {
+                        command = item.Value.ToString().PadLeft(3, '0');
+                    }
+                    else if (item.Key == "Temperature CPU Package")
+                    {
+                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
+                    }
+                    else if (item.Key == "Power CPU Cores")
+                    {
+                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
+                    }
+                    else if (item.Key == "Temperature GPU Core")
+                    {
+                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
+                    }
+                    else if (item.Key == "Clock GPU Core")
+                    {
+                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(4, '0');
+                    }
+                    else if (item.Key == "Load GPU Core")
+                    {
+                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
+                    }
                 }
-                else if (item.Key == "Temperature CPU Package")
-                {
-                    command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                }
-                else if (item.Key == "Power CPU Cores")
-                {
-                    command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                }
-                else if (item.Key == "Temperature GPU Core")
-                {
-                    command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                }
-                else if (item.Key == "Clock GPU Core")
-                {
-                    command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(4, '0');
-                }
-                else if (item.Key == "Load GPU Core")
-                {
-                    command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                }
+                if (ENABLE_DEBUG) eventLog.WriteEntry("Data: " + command);
+                serialPort.Write(command);
+                if (ENABLE_DEBUG) Console.WriteLine(command);
             }
-            if(ENABLE_DEBUG) eventLog.WriteEntry("Data: " + command);
-            serialPort.Write(command);
-            if (ENABLE_DEBUG) Console.WriteLine(command);
-
+            catch (Exception e)
+            {
+                eventLog.WriteEntry("Error at: " + e.StackTrace, EventLogEntryType.Error);
+            }
         }
 
         public ArduinoSerialService()
@@ -112,16 +117,13 @@ namespace TempService
             eventLog = new EventLog();
             serialPort = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
 
-            if (ENABLE_DEBUG)
+            if (!EventLog.SourceExists("ArduinoSerialLog"))
             {
-                if (!EventLog.SourceExists("ArduinoSerialLog"))
-                {
-                    EventLog.CreateEventSource("ArduinoSerialLog", "ArduinoSerialServiceLog");
-                }
-                eventLog.Source = "ArduinoSerialLog";
-                eventLog.Log = "ArduinoSerialServiceLog";
+                EventLog.CreateEventSource("ArduinoSerialLog", "ArduinoSerialServiceLog");
             }
-
+            eventLog.Source = "ArduinoSerialLog";
+            eventLog.Log = "ArduinoSerialServiceLog";
+            
             System.Timers.Timer timer = new System.Timers.Timer
             {
                 Interval = interval
