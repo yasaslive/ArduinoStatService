@@ -53,7 +53,9 @@ U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SD
 
 #define U8LOG_WIDTH 20
 #define U8LOG_HEIGHT 20
+
 uint8_t u8log_buffer[U8LOG_WIDTH*U8LOG_HEIGHT];
+
 U8G2LOG u8g2log;
 String rawData;
 String state;
@@ -63,6 +65,9 @@ int cpuPower;
 int gpuTemp;
 int gpuUtilization;
 int gpuClock;
+
+int count = 0;
+bool ENABLE_DEBUG = true;
 
 void setup(void) {
   Serial.begin(500000);				// Start reading from Serial communication interface
@@ -80,16 +85,16 @@ void processData(){
   gpuUtilization = rawData.substring(16,19).toInt();
 }
 
-void loop(void) {
+void loop(void) {  
   if(Serial.available()){
     rawData = "";
     while(Serial.available() > 0){   
       rawData += Serial.readString();
     }
-
+    count = 0;
     processData();
     
-    Serial.println(cpuTemp);
+    if(ENABLE_DEBUG){ Serial.println(cpuTemp);}
 
     if(cpuTemp > 85){
       state = "(Hot🔥)";
@@ -99,6 +104,9 @@ void loop(void) {
       state = "(Normal)";
     }
   }
+
+  if(count > 20){state = "No Data!";}
+  
   u8g2.firstPage();
   do {
     u8g2.setFont(u8g2_font_6x13_tr);		// font for the title
@@ -108,4 +116,5 @@ void loop(void) {
     u8g2.setCursor(0, 64);
     u8g2.print(String(cpuTemp)+"°C");
   } while ( u8g2.nextPage() );
+  count++;
 }
