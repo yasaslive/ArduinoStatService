@@ -146,6 +146,7 @@ namespace TempService
                     {
                         serialPort = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
                         serialPort.Open();
+                        logState = false;
                     }
                     if (!logState)
                     {
