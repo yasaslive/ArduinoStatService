@@ -23,7 +23,7 @@ namespace TempService
         static bool ENABLE_DEBUG = false;
         static string port = "COM5";
         static int baudRate = 500000;
-        static int interval = 2500;
+        static int interval = 1500;
         static bool logState = false;
 
         static List<KeyValuePair<string, int>> resources = new List<KeyValuePair<string, int>>();
@@ -133,6 +133,7 @@ namespace TempService
                         command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
                     }
                 }
+                command = command + "\\n";
                 if (ENABLE_DEBUG) eventLog.WriteEntry("Data: " + command);
                 serialPort.Write(command);
                 if (ENABLE_DEBUG) Console.WriteLine(command);

@@ -45,7 +45,7 @@
 #include <Wire.h>
 #endif
 
-U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // All Boards without Reset of the Display
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ U8X8_PIN_NONE);   // All Boards without Reset of the Display
 
 
 // setup the terminal (U8G2LOG) and connect to u8g2 for automatic refresh of the display
@@ -74,7 +74,8 @@ void setup(void) {
 
   u8g2.begin();  
   u8g2.enableUTF8Print();
-}
+  u8g2.setBusClock(1500000);
+  }
 
 void processData(){
   cpuUtilization = rawData.substring(0,3).toInt();
@@ -87,10 +88,7 @@ void processData(){
 
 void loop(void) {  
   if(Serial.available()){
-    rawData = "";
-    while(Serial.available() > 0){   
-      rawData += Serial.readString();
-    }
+    rawData = Serial.readStringUntil("\n");
     count = 0;
     processData();
     
