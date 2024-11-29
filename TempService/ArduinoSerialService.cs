@@ -26,7 +26,16 @@ namespace TempService
         static int interval = 1500;
         static bool logState = false;
 
-        static List<KeyValuePair<string, int>> resources = new List<KeyValuePair<string, int>>();
+        static Dictionary<string, int> componentList = new Dictionary<string, int>()
+        {
+            { "Load CPU Total", 3 },
+            { "Temperature CPU Package", 3 },
+            { "Power CPU Cores", 3 },
+            { "Temperature GPU Core", 3 },
+            { "Clock GPU Core", 4 },
+            { "Load GPU Core", 3 },
+
+        };
         private SerialPort serialPort;
         System.Timers.Timer timer;
 
@@ -45,7 +54,7 @@ namespace TempService
             public void VisitParameter(IParameter parameter) { }
         }
 
-        public static void Monitor()
+        public static string Monitor(Dictionary<string, int> components)
         {
             Computer computer = new Computer
             {
@@ -56,19 +65,22 @@ namespace TempService
             computer.Open();
             computer.Accept(new UpdateVisitor());
 
+            string rawData = "";
+
             foreach (IHardware hardware in computer.Hardware)
             {
                 if (ENABLE_DEBUG) Console.WriteLine("Hardware: {0}", hardware.Name);
 
-
                 foreach (ISensor sensor in hardware.Sensors)
                 {
-                    int val = (int)sensor.Value;
-                    resources.Add(new KeyValuePair<string, int>(sensor.SensorType.ToString() + " " + sensor.Name.ToString(), val));
+                    if (components.ContainsKey(sensor.SensorType.ToString() + " " + sensor.Name.ToString()))
+                    {
+                        rawData += Math.Round(Double.Parse(sensor.Value.ToString())).ToString().PadLeft(components[sensor.SensorType.ToString() + " " + sensor.Name.ToString()], '0');
+                    }
                 }
             }
-
             computer.Close();
+            return rawData += "\\n";
         }
 
         private string DetectArduinoPort()
@@ -102,38 +114,8 @@ namespace TempService
         {
             try
             {
-                Monitor();
-                string command = "";
+                string command = Monitor(componentList);
                 port = DetectArduinoPort();
-                foreach (KeyValuePair<string, int> item in resources)
-                {
-                    if (ENABLE_DEBUG) Console.WriteLine("{0}, {1}", item.Key, item.Value);
-                    if (item.Key == "Load CPU Total")
-                    {
-                        command = item.Value.ToString().PadLeft(3, '0');
-                    }
-                    else if (item.Key == "Temperature CPU Package")
-                    {
-                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                    }
-                    else if (item.Key == "Power CPU Cores")
-                    {
-                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                    }
-                    else if (item.Key == "Temperature GPU Core")
-                    {
-                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                    }
-                    else if (item.Key == "Clock GPU Core")
-                    {
-                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(4, '0');
-                    }
-                    else if (item.Key == "Load GPU Core")
-                    {
-                        command += Math.Round(Double.Parse(item.Value.ToString())).ToString().PadLeft(3, '0');
-                    }
-                }
-                command = command + "\\n";
                 if (ENABLE_DEBUG) eventLog.WriteEntry("Data: " + command);
                 serialPort.Write(command);
                 if (ENABLE_DEBUG) Console.WriteLine(command);
