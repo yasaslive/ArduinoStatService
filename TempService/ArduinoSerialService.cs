@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Ports;
 using System.Linq;
+using System.Management;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
@@ -22,9 +24,11 @@ namespace TempService
         static string port = "COM5";
         static int baudRate = 500000;
         static int interval = 2500;
+        static bool logState = false;
 
         static List<KeyValuePair<string, int>> resources = new List<KeyValuePair<string, int>>();
         private SerialPort serialPort;
+        System.Timers.Timer timer;
 
         public class UpdateVisitor : IVisitor
         {
@@ -67,12 +71,40 @@ namespace TempService
             computer.Close();
         }
 
+        private string DetectArduinoPort()
+        {
+            ManagementScope connectionScope = new ManagementScope();
+            SelectQuery serialQuery = new SelectQuery("SELECT * FROM Win32_SerialPort");
+            ManagementObjectSearcher searcher = new ManagementObjectSearcher(connectionScope, serialQuery);
+
+            try
+            {
+                foreach (ManagementObject item in searcher.Get())
+                {
+                    string desc = item["Description"].ToString();
+                    string deviceId = item["DeviceID"].ToString();
+
+                    if (desc.Contains("Arduino"))
+                    {
+                        return deviceId;
+                    }
+                }
+            }
+            catch (ManagementException e)
+            {
+                eventLog.WriteEntry("Error Detecting Port: " + e.StackTrace, EventLogEntryType.Error);
+            }
+
+            return null;
+        }
+
         public void OnTimedEvent(object sender, ElapsedEventArgs args)
         {
             try
             {
                 Monitor();
                 string command = "";
+                port = DetectArduinoPort();
                 foreach (KeyValuePair<string, int> item in resources)
                 {
                     if (ENABLE_DEBUG) Console.WriteLine("{0}, {1}", item.Key, item.Value);
@@ -104,34 +136,68 @@ namespace TempService
                 if (ENABLE_DEBUG) eventLog.WriteEntry("Data: " + command);
                 serialPort.Write(command);
                 if (ENABLE_DEBUG) Console.WriteLine(command);
+                
             }
             catch (Exception e)
             {
-                eventLog.WriteEntry("Error at: " + e.StackTrace, EventLogEntryType.Error);
+                if (e is InvalidOperationException || e is IOException)
+                {
+                    if(port != null)
+                    {
+                        serialPort = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
+                        serialPort.Open();
+                    }
+                    if (!logState)
+                    {
+                        eventLog.WriteEntry("Arduino Disconnected: " + e.Message, EventLogEntryType.Error);
+                        logState = true;
+                    }
+                }
+                else
+                {
+                    eventLog.WriteEntry("Error at: " + e.StackTrace + " " + e.GetType().Name, EventLogEntryType.Error);
+
+                }
             }
         }
+
+
 
         public ArduinoSerialService()
         {
             InitializeComponent();
             eventLog = new EventLog();
-            serialPort = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
 
-            if (!EventLog.SourceExists("ArduinoSerialLog"))
+            if (!EventLog.SourceExists("Arduino Serial Log"))
             {
-                EventLog.CreateEventSource("ArduinoSerialLog", "ArduinoSerialServiceLog");
+                EventLog.CreateEventSource("Arduino Serial Log", "Arduino Serial Service Log");
             }
-            eventLog.Source = "ArduinoSerialLog";
-            eventLog.Log = "ArduinoSerialServiceLog";
+            eventLog.Source = "Arduino Serial Log";
+            eventLog.Log = "Arduino Serial Service Log";
+                
+            port = DetectArduinoPort();
+                
+            if(port == "" || port == null)
+            {
+                eventLog.WriteEntry("No Arduino Port Detected!" + port, EventLogEntryType.Error);
+            }
+
+            while (port == "" || port == null)
+            {
+                port = DetectArduinoPort();
+            }
+
+            eventLog.WriteEntry("Detected Arduino Port at: " + port, EventLogEntryType.Information);
+
+            serialPort = new SerialPort(port, baudRate, Parity.None, 8, StopBits.One);
             
-            System.Timers.Timer timer = new System.Timers.Timer
+            timer = new System.Timers.Timer
             {
                 Interval = interval
             };
-            timer.Elapsed += new ElapsedEventHandler(this.OnTimedEvent);
+            timer.Elapsed += OnTimedEvent;
             timer.AutoReset = true;
             timer.Start();
-            
         }
 
         protected override void OnStart(string[] args)
